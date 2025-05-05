@@ -340,8 +340,11 @@ static NSString *GetCacheSize() {
         YTSettingsSectionItem *speed = [YTSettingsSectionItemClass itemWithTitle:LOC(@"HoldToSpeed")
         accessibilityIdentifier:@"YTLiteSectionItem"
         detailTextBlock:^NSString *() {
-            NSArray *speedLabels = @[LOC(@"Disabled"), LOC(@"Default"), @"0.25×", @"0.5×", @"0.75×", @"1.0×", @"1.25×", @"1.5×", @"1.75×", @"2.0×", @"3.0×", @"4.0×", @"5.0×"];
-            return speedLabels[ytlInt(@"speedIndex")];
+            NSMutableArray<NSString *> *labels = [NSMutableArray arrayWithObjects:LOC(@"Disabled"), LOC(@"Default"), nil];
+            for (float r = 0.5f; r <= 4.0f; r += 0.1f) {
+                [labels addObject:[NSString stringWithFormat:@"%.1f×", r]];
+            }
+            return labels[ytlInt(@"speedIndex")];
         }
         selectBlock:^BOOL (YTSettingsCell *cell, NSUInteger arg1) {
             NSMutableArray <YTSettingsSectionItem *> *rows = [NSMutableArray array];
