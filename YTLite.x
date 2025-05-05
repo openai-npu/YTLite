@@ -323,7 +323,10 @@ static UIImage *YTImageNamed(NSString *imageName) {
 %hook YTVarispeedSwitchController
 - (void)setDelegate:(id)arg1 {
     NSMutableArray *optionsCopy = [[self valueForKey:@"_options"] mutableCopy];
-    NSArray *speedOptions = @[@"2.5", @"3", @"3.5", @"4", @"5"];
+    NSMutableArray<NSString *> *speedOptions = [NSMutableArray array];
+    for (float r = 0.5f; r <= 4.0f; r += 0.1f) {
+        [speedOptions addObject:[NSString stringWithFormat:@"%.1f", r]];
+    }
 
     for (NSString *title in speedOptions) {
         float rate = [title floatValue];
@@ -1301,7 +1304,10 @@ BOOL isTabSelected = NO;
 CGFloat rateBeforeSpeedmaster = 1.0;
 
 static void manageSpeedmasterYTLite(UILongPressGestureRecognizer *gesture, YTMainAppVideoPlayerOverlayViewController *delegate, YTInlinePlayerScrubUserEducationView *edu) {
-    NSArray *speedLabels = @[@0, @2.0, @0.25, @0.5, @0.75, @1.0, @1.25, @1.5, @1.75, @2.0, @3.0, @4.0, @5.0];
+    NSMutableArray<NSNumber *> *speedLabels = [NSMutableArray arrayWithObjects:@0.0, @1.0, nil];
+    for (float r = 0.5f; r <= 4.0f; r += 0.1f) {
+        [speedLabels addObject:@(r)];
+    }
 
     YTLabel *label = [edu valueForKey:@"_userEducationLabel"];
     edu.labelType = 1;
