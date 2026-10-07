@@ -43,9 +43,8 @@ jobs:
           git -C "$GITHUB_WORKSPACE/../protobuf" checkout -q v3.21.12
 
       - name: Build tweak deb
-        env:
-          THEOS: ${{ env.HOME }}/theos
         run: |
+          export THEOS=$HOME/theos
           LLVM=$(brew --prefix llvm)
           make package \
             TARGET_CC=$LLVM/bin/clang TARGET_CXX=$LLVM/bin/clang++ \
