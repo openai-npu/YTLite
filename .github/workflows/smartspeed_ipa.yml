@@ -1,0 +1,125 @@
+name: SmartSpeed IPA build
+
+on:
+  push:
+    paths:
+      - ".github/workflows/smartspeed_ipa.yml"
+      - "ci/**"
+  workflow_dispatch:
+
+env:
+  BASE_IPA_URL: "https://wooly.wtf/files/Decrypted%20IPAs/com.google.ios.youtube-21.21.03.ipa"
+  OLD_IPA_URL: "https://files.catbox.moe/z8jg5n.ipa"
+
+jobs:
+  tweak:
+    name: Build patched YTLite.dylib
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: brew install ldid dpkg make llvm
+
+      - name: Setup theos, SDK and headers
+        run: |
+          git clone -q --recursive https://github.com/theos/theos "$HOME/theos"
+          mkdir -p "$HOME/theos/sdks" "$HOME/theos/include/roothide"
+          tmp=$(mktemp -d)
+          git clone -q -n --depth=1 --filter=tree:0 https://github.com/theos/sdks "$tmp/sdks"
+          git -C "$tmp/sdks" sparse-checkout set --no-cone iPhoneOS16.5.sdk
+          git -C "$tmp/sdks" checkout -q
+          cp -R "$tmp/sdks/iPhoneOS16.5.sdk" "$HOME/theos/sdks/"
+          git clone -q --depth=1 https://github.com/PoomSmart/YouTubeHeader "$HOME/theos/include/YouTubeHeader"
+          git clone -q --depth=1 https://github.com/PoomSmart/PSHeader "$HOME/theos/include/PSHeader"
+          curl -sfL https://raw.githubusercontent.com/roothide/libroothide/main/stub.h -o "$HOME/theos/include/roothide/stub.h"
+          printf "#ifndef ROOTHIDE_H\n#define ROOTHIDE_H\n#include <roothide/stub.h>\n#endif\n" > "$HOME/theos/include/roothide.h"
+          ln -sfn "$HOME/theos/include/YouTubeHeader" "$HOME/YouTubeHeader"
+          ln -sfn "$HOME/theos/include/PSHeader" "$HOME/PSHeader"
+          git clone -q -n --depth=1 --filter=tree:0 https://github.com/protocolbuffers/protobuf "$HOME/protobuf"
+          git -C "$HOME/protobuf" sparse-checkout set --no-cone objectivec
+          git -C "$HOME/protobuf" checkout -q HEAD
+          git -C "$HOME/protobuf" fetch -q --depth=1 origin tag v3.21.12
+          git -C "$HOME/protobuf" checkout -q v3.21.12
+
+      - name: Build tweak deb
+        env:
+          THEOS: ${{ env.HOME }}/theos
+        run: |
+          LLVM=$(brew --prefix llvm)
+          make package \
+            TARGET_CC=$LLVM/bin/clang TARGET_CXX=$LLVM/bin/clang++ \
+            TARGET_LD=$LLVM/bin/clang++ TARGET_STRIP=$LLVM/bin/llvm-strip \
+            TARGET_LIPO=lipo TARGET_CODESIGN=ldid TARGET_CODESIGN_FLAGS=-S
+          ls -la packages/
+
+      - name: Upload deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: ytlite-deb
+          path: packages/*.deb
+
+  package:
+    name: Audit + inject + package IPA
+    needs: tweak
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: ytlite-deb, path: debs/}
+
+      - name: Download base + donor IPAs
+        run: |
+          curl -sfL "$BASE_IPA_URL" -o base.ipa
+          curl -sfL "$OLD_IPA_URL" -o old.ipa
+          ls -lh *.ipa
+
+      - name: Audit decrypted base IPA
+        run: |
+          mkdir -p audit && unzip -q base.ipa -d audit
+          python3 ci/audit_ipa.py audit/Payload/*.app
+
+      - name: Assemble patched Payload
+        run: |
+          set -e
+          APP=$(echo audit/Payload/*.app)
+          mkdir -p old_x && unzip -q old.ipa -d old_x
+          OLDAPP="old_x/Payload/YouTube.app"
+          mkdir -p "$APP/Frameworks"
+          cp -R "$OLDAPP/Frameworks/" "$APP/Frameworks/"
+          mkdir -p deb_x && ar -x debs/*.deb && tar -xf data.tar.* -C deb_x
+          cp "deb_x/Library/MobileSubstrate/DynamicLibraries/YTLite.dylib" "$APP/Frameworks/YTLite.dylib"
+          cp -R "deb_x/Library/Application Support/YTLite.bundle" "$APP/YTLite.bundle"
+          for appex in OpenYoutubeSafariExtension ShareServiceExtension; do
+            [ -d "$OLDAPP/PlugIns/$appex.appex" ] && cp -R "$OLDAPP/PlugIns/$appex.appex" "$APP/PlugIns/" || true
+          done
+          ls "$APP/Frameworks/"
+
+      - name: Inject weak rpath loads
+        run: |
+          set -e
+          APP=$(echo audit/Payload/*.app)
+          git clone -q https://github.com/Tyilo/insert_dylib /tmp/insert_dylib
+          clang++ -std=c++11 -framework Foundation /tmp/insert_dylib/insert_dylib.mm -o /tmp/insert_dylib_bin
+          for d in "$APP"/Frameworks/*.dylib; do
+            name=$(basename "$d")
+            /tmp/insert_dylib_bin --weak --inplace --all-yes "@rpath/$name" "$APP/YouTube" >/dev/null
+            echo "injected $name"
+          done
+          otool -L "$APP/YouTube" | grep "@rpath.*weak" | wc -l
+
+      - name: Package IPA
+        run: |
+          cd audit && zip -qry ../out.ipa Payload && cd ..
+          ls -lh out.ipa
+
+      - name: Release + artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "smartspeed-${{ github.run_id }}" out.ipa \
+            --repo ${{ github.repository }} \
+            --title "YTLite smart-speed build (21.21.03 base)" \
+            --notes "Patched YTLite.dylib on decrypted YouTube 21.21.03. Audit report in run log."
