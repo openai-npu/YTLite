@@ -34,13 +34,13 @@ jobs:
           git clone -q --depth=1 https://github.com/PoomSmart/PSHeader "$HOME/theos/include/PSHeader"
           curl -sfL https://raw.githubusercontent.com/roothide/libroothide/main/stub.h -o "$HOME/theos/include/roothide/stub.h"
           printf "#ifndef ROOTHIDE_H\n#define ROOTHIDE_H\n#include <roothide/stub.h>\n#endif\n" > "$HOME/theos/include/roothide.h"
-          ln -sfn "$HOME/theos/include/YouTubeHeader" "$HOME/YouTubeHeader"
-          ln -sfn "$HOME/theos/include/PSHeader" "$HOME/PSHeader"
-          git clone -q -n --depth=1 --filter=tree:0 https://github.com/protocolbuffers/protobuf "$HOME/protobuf"
-          git -C "$HOME/protobuf" sparse-checkout set --no-cone objectivec
-          git -C "$HOME/protobuf" checkout -q HEAD
-          git -C "$HOME/protobuf" fetch -q --depth=1 origin tag v3.21.12
-          git -C "$HOME/protobuf" checkout -q v3.21.12
+          ln -sfn "$HOME/theos/include/YouTubeHeader" "$GITHUB_WORKSPACE/../YouTubeHeader"
+          ln -sfn "$HOME/theos/include/PSHeader" "$GITHUB_WORKSPACE/../PSHeader"
+          git clone -q -n --depth=1 --filter=tree:0 https://github.com/protocolbuffers/protobuf "$GITHUB_WORKSPACE/../protobuf"
+          git -C "$GITHUB_WORKSPACE/../protobuf" sparse-checkout set --no-cone objectivec
+          git -C "$GITHUB_WORKSPACE/../protobuf" checkout -q HEAD
+          git -C "$GITHUB_WORKSPACE/../protobuf" fetch -q --depth=1 origin tag v3.21.12
+          git -C "$GITHUB_WORKSPACE/../protobuf" checkout -q v3.21.12
 
       - name: Build tweak deb
         env:
