@@ -101,7 +101,7 @@ jobs:
           set -e
           APP=$(echo audit/Payload/*.app)
           git clone -q https://github.com/Tyilo/insert_dylib /tmp/insert_dylib
-          clang++ -std=c++11 -framework Foundation /tmp/insert_dylib/insert_dylib.mm -o /tmp/insert_dylib_bin
+          clang -O2 /tmp/insert_dylib/insert_dylib/main.c -o /tmp/insert_dylib_bin
           for d in "$APP"/Frameworks/*.dylib; do
             name=$(basename "$d")
             /tmp/insert_dylib_bin --weak --inplace --all-yes "@rpath/$name" "$APP/YouTube" >/dev/null
