@@ -33,7 +33,7 @@ jobs:
           git clone -q --depth=1 https://github.com/PoomSmart/YouTubeHeader "$HOME/theos/include/YouTubeHeader"
           git clone -q --depth=1 https://github.com/PoomSmart/PSHeader "$HOME/theos/include/PSHeader"
           curl -sfL https://raw.githubusercontent.com/roothide/libroothide/main/stub.h -o "$HOME/theos/include/roothide/stub.h"
-          printf "#ifndef ROOTHIDE_H\n#define ROOTHIDE_H\n#include <roothide/stub.h>\n#endif\n" > "$HOME/theos/include/roothide.h"
+          printf "#ifndef ROOTHIDE_H_WRAPPER\n#define ROOTHIDE_H_WRAPPER\n#include <roothide/stub.h>\n#endif\n" > "$HOME/theos/include/roothide.h"
           ln -sfn "$HOME/theos/include/YouTubeHeader" "$GITHUB_WORKSPACE/../YouTubeHeader"
           ln -sfn "$HOME/theos/include/PSHeader" "$GITHUB_WORKSPACE/../PSHeader"
           git clone -q -n --depth=1 --filter=tree:0 https://github.com/protocolbuffers/protobuf "$GITHUB_WORKSPACE/../protobuf"
