@@ -20,16 +20,20 @@ static UIImage *YTImageNamed(NSString *imageName) {
 %end
 
 %hook YTDataUtils
-+ (id)spamSignalsDictionary { return ytlBool(@"noAds") ? nil : %orig; }
-+ (id)spamSignalsDictionaryWithoutIDFA { return ytlBool(@"noAds") ? nil : %orig; }
++ (id)spamSignalsDictionary { return ytlBool(@"noAds") ? nil : %orig;
+}
++ (id)spamSignalsDictionaryWithoutIDFA { return ytlBool(@"noAds") ? nil : %orig;
+}
 %end
 
 %hook YTAdsInnerTubeContextDecorator
-- (void)decorateContext:(id)context { if (!ytlBool(@"noAds")) %orig; }
+- (void)decorateContext:(id)context { if (!ytlBool(@"noAds")) %orig;
+}
 %end
 
 %hook YTAccountScopedAdsInnerTubeContextDecorator
-- (void)decorateContext:(id)context { if (!ytlBool(@"noAds")) %orig; }
+- (void)decorateContext:(id)context { if (!ytlBool(@"noAds")) %orig;
+}
 %end
 
 %hook YTIElementRenderer
@@ -107,12 +111,17 @@ static UIImage *YTImageNamed(NSString *imageName) {
 // Disable Cast
 %hook MDXPlaybackRouteButtonController
 - (BOOL)isPersistentCastIconEnabled { return ytlBool(@"noCast") ? NO : YES; }
-- (void)updateRouteButton:(id)arg1 { if (!ytlBool(@"noCast")) %orig; }
-- (void)updateAllRouteButtons { if (!ytlBool(@"noCast")) %orig; }
+- (void)updateRouteButton:(id)arg1 { if (!ytlBool(@"noCast")) %orig;
+}
+- (void)updateAllRouteButtons { if (!ytlBool(@"noCast")) %orig;
+}
 %end
 
 %hook YTSettings
-- (void)setDisableMDXDeviceDiscovery:(BOOL)arg1 { %orig(ytlBool(@"noCast")); }
+- (void)setDisableMDXDeviceDiscovery:(BOOL)arg1 {
+    BOOL v = ytlBool(@"noCast");
+    %orig(v);
+}
 %end
 
 // Hide Navigation Bar Buttons
@@ -137,11 +146,13 @@ static UIImage *YTImageNamed(NSString *imageName) {
     if (ytlBool(@"noVoiceSearchButton")) [self setValue:@(NO) forKey:@"_isVoiceSearchAllowed"];
 }
 
-- (void)setSuggestions:(id)arg1 { if (!ytlBool(@"noSearchHistory")) %orig; }
+- (void)setSuggestions:(id)arg1 { if (!ytlBool(@"noSearchHistory")) %orig;
+}
 %end
 
 %hook YTPersonalizedSuggestionsCacheProvider
-- (id)activeCache { return ytlBool(@"noSearchHistory") ? nil : %orig; }
+- (id)activeCache { return ytlBool(@"noSearchHistory") ? nil : %orig;
+}
 %end
 
 // Remove Videos Section Under Player
@@ -154,11 +165,16 @@ static UIImage *YTImageNamed(NSString *imageName) {
 
 %hook YTHeaderView
 // Stick Navigation bar
-- (BOOL)stickyNavHeaderEnabled { return ytlBool(@"stickyNavbar") ? YES : %orig; }
+- (BOOL)stickyNavHeaderEnabled { return ytlBool(@"stickyNavbar") ? YES : %orig;
+}
 
 // Hide YouTube Logo
-- (void)setCustomTitleView:(UIView *)customTitleView { if (!ytlBool(@"noYTLogo")) %orig; }
-- (void)setTitle:(NSString *)title { ytlBool(@"noYTLogo") ? %orig(@"") : %orig; }
+- (void)setCustomTitleView:(UIView *)customTitleView { if (!ytlBool(@"noYTLogo")) %orig;
+}
+- (void)setTitle:(NSString *)title {
+    NSString *t = ytlBool(@"noYTLogo") ? @"" : title;
+    %orig(t);
+}
 %end
 
 // Premium logo
@@ -183,12 +199,16 @@ static UIImage *YTImageNamed(NSString *imageName) {
 
 // Remove Subbar
 %hook YTMySubsFilterHeaderView
-- (void)setChipFilterView:(id)arg1 { if (!ytlBool(@"noSubbar")) %orig; }
+- (void)setChipFilterView:(id)arg1 { if (!ytlBool(@"noSubbar")) %orig;
+}
 %end
 
 %hook YTHeaderContentComboView
-- (void)enableSubheaderBarWithView:(id)arg1 { if (!ytlBool(@"noSubbar")) %orig; }
-- (void)setFeedHeaderScrollMode:(int)arg1 { ytlBool(@"noSubbar") ? %orig(0) : %orig; }
+- (void)enableSubheaderBarWithView:(id)arg1 { if (!ytlBool(@"noSubbar")) %orig;
+}
+- (void)setFeedHeaderScrollMode:(int)arg1 {
+    %orig(ytlBool(@"noSubbar") ? 0 : arg1);
+}
 %end
 
 %hook YTChipCloudCell
@@ -201,10 +221,13 @@ static UIImage *YTImageNamed(NSString *imageName) {
 
 %hook YTMainAppControlsOverlayView
 // Hide Autoplay Switch
-- (void)setAutoplaySwitchButtonRenderer:(id)arg1 { if (!ytlBool(@"hideAutoplay")) %orig; }
+- (void)setAutoplaySwitchButtonRenderer:(id)arg1 { if (!ytlBool(@"hideAutoplay")) %orig;
+}
 
 // Hide Subs Button
-- (void)setClosedCaptionsOrSubtitlesButtonAvailable:(BOOL)arg1 { ytlBool(@"hideSubs") ? %orig(NO) : %orig; }
+- (void)setClosedCaptionsOrSubtitlesButtonAvailable:(BOOL)arg1 {
+    %orig(ytlBool(@"hideSubs") ? NO : arg1);
+}
 
 // Pause On Overlay
 - (void)setOverlayVisible:(BOOL)visible {
@@ -218,22 +241,30 @@ static UIImage *YTImageNamed(NSString *imageName) {
 
 // Remove HUD Messages
 %hook YTHUDMessageView
-- (id)initWithMessage:(id)arg1 dismissHandler:(id)arg2 { return ytlBool(@"noHUDMsgs") ? nil : %orig; }
+- (id)initWithMessage:(id)arg1 dismissHandler:(id)arg2 { return ytlBool(@"noHUDMsgs") ? nil : %orig;
+}
 %end
 
 %hook YTColdConfig
 // Hide Next & Previous buttons
-- (BOOL)removeNextPaddleForSingletonVideos { return ytlBool(@"hidePrevNext") ? YES : %orig; }
-- (BOOL)removePreviousPaddleForSingletonVideos { return ytlBool(@"hidePrevNext") ? YES : %orig; }
+- (BOOL)removeNextPaddleForSingletonVideos { return ytlBool(@"hidePrevNext") ? YES : %orig;
+}
+- (BOOL)removePreviousPaddleForSingletonVideos { return ytlBool(@"hidePrevNext") ? YES : %orig;
+}
 // Replace Next & Previous with Fast Forward & Rewind buttons
-- (BOOL)replaceNextPaddleWithFastForwardButtonForSingletonVods { return ytlBool(@"replacePrevNext") ? YES : %orig; }
-- (BOOL)replacePreviousPaddleWithRewindButtonForSingletonVods { return ytlBool(@"replacePrevNext") ? YES : %orig; }
+- (BOOL)replaceNextPaddleWithFastForwardButtonForSingletonVods { return ytlBool(@"replacePrevNext") ? YES : %orig;
+}
+- (BOOL)replacePreviousPaddleWithRewindButtonForSingletonVods { return ytlBool(@"replacePrevNext") ? YES : %orig;
+}
 // Disable Free Zoom
-- (BOOL)videoZoomFreeZoomEnabledGlobalConfig { return ytlBool(@"noFreeZoom") ? NO : %orig; }
+- (BOOL)videoZoomFreeZoomEnabledGlobalConfig { return ytlBool(@"noFreeZoom") ? NO : %orig;
+}
 // Stick Sort Buttons in Comments Section
-- (BOOL)enableHideChipsInTheCommentsHeaderOnScrollIos { return ytlBool(@"stickSortComments") ? NO : %orig; }
+- (BOOL)enableHideChipsInTheCommentsHeaderOnScrollIos { return ytlBool(@"stickSortComments") ? NO : %orig;
+}
 // Hide Sort Buttons in Comments Section
-- (BOOL)enableChipsInTheCommentsHeaderIos { return ytlBool(@"hideSortComments") ? NO : %orig; }
+- (BOOL)enableChipsInTheCommentsHeaderIos { return ytlBool(@"hideSortComments") ? NO : %orig;
+}
 // Use System Theme
 - (BOOL)shouldUseAppThemeSetting { return YES; }
 // Dismiss Panel By Swiping in Fullscreen Mode
@@ -241,33 +272,44 @@ static UIImage *YTImageNamed(NSString *imageName) {
 // Remove Video in Playlist By Swiping To The Right
 - (BOOL)enableSwipeToRemoveInPlaylistWatchEp { return YES; }
 // Enable Old-style Minibar For Playlist Panel
-- (BOOL)queueClientGlobalConfigEnableFloatingPlaylistMinibar { return ytlBool(@"playlistOldMinibar") ? NO : %orig; }
+- (BOOL)queueClientGlobalConfigEnableFloatingPlaylistMinibar { return ytlBool(@"playlistOldMinibar") ? NO : %orig;
+}
 %end
 
 // Remove Dark Background in Overlay
 %hook YTMainAppVideoPlayerOverlayView
-- (void)setBackgroundVisible:(BOOL)arg1 isGradientBackground:(BOOL)arg2 { ytlBool(@"noDarkBg") ? %orig(NO, arg2) : %orig; }
+- (void)setBackgroundVisible:(BOOL)arg1 isGradientBackground:(BOOL)arg2 {
+    BOOL v = ytlBool(@"noDarkBg") ? NO : arg1;
+    %orig(v, arg2);
+}
 %end
 
 // No Endscreen Cards
 %hook YTCreatorEndscreenView
-- (void)setHidden:(BOOL)arg1 { ytlBool(@"endScreenCards") ? %orig(YES) : %orig; }
+- (void)setHidden:(BOOL)arg1 {
+    %orig(ytlBool(@"endScreenCards") ? YES : arg1);
+}
 %end
 
 // Disable Fullscreen Actions
 %hook YTFullscreenActionsView
 - (BOOL)enabled { return ytlBool(@"noFullscreenActions") ? NO : YES; }
-- (void)setEnabled:(BOOL)arg1 { ytlBool(@"noFullscreenActions") ? %orig(NO) : %orig; }
+- (void)setEnabled:(BOOL)arg1 {
+    %orig(ytlBool(@"noFullscreenActions") ? NO : arg1);
+}
 %end
 
 // Dont Show Related Videos on Finish
 %hook YTFullscreenEngagementOverlayController
-- (void)setRelatedVideosVisible:(BOOL)arg1 { ytlBool(@"noRelatedVids") ? %orig(NO) : %orig; }
+- (void)setRelatedVideosVisible:(BOOL)arg1 {
+    %orig(ytlBool(@"noRelatedVids") ? NO : arg1);
+}
 %end
 
 // Hide Paid Promotion Cards
 %hook YTMainAppVideoPlayerOverlayViewController
-- (void)setPaidContentWithPlayerData:(id)data { if (!ytlBool(@"noPromotionCards")) %orig; }
+- (void)setPaidContentWithPlayerData:(id)data { if (!ytlBool(@"noPromotionCards")) %orig;
+}
 - (void)playerOverlayProvider:(YTPlayerOverlayProvider *)provider didInsertPlayerOverlay:(YTPlayerOverlay *)overlay {
     if ([[overlay overlayIdentifier] isEqualToString:@"player_overlay_paid_content"] && ytlBool(@"noPromotionCards")) return;
     %orig;
@@ -275,40 +317,50 @@ static UIImage *YTImageNamed(NSString *imageName) {
 %end
 
 %hook YTInlineMutedPlaybackPlayerOverlayViewController
-- (void)setPaidContentWithPlayerData:(id)data { if (!ytlBool(@"noPromotionCards")) %orig; }
+- (void)setPaidContentWithPlayerData:(id)data { if (!ytlBool(@"noPromotionCards")) %orig;
+}
 %end
 
 %hook YTInlinePlayerBarContainerView
-- (void)setPlayerBarAlpha:(CGFloat)alpha { ytlBool(@"persistentProgressBar") ? %orig(1.0) : %orig; }
+- (void)setPlayerBarAlpha:(CGFloat)alpha {
+    %orig(ytlBool(@"persistentProgressBar") ? 1.0 : alpha);
+}
 %end
 
 // Remove Watermarks
 %hook YTAnnotationsViewController
-- (void)loadFeaturedChannelWatermark { if (!ytlBool(@"noWatermarks")) %orig; }
+- (void)loadFeaturedChannelWatermark { if (!ytlBool(@"noWatermarks")) %orig;
+}
 %end
 
 %hook YTMainAppVideoPlayerOverlayView
-- (BOOL)isWatermarkEnabled { return ytlBool(@"noWatermarks") ? NO : %orig; }
+- (BOOL)isWatermarkEnabled { return ytlBool(@"noWatermarks") ? NO : %orig;
+}
 %end
 
 // Forcibly Enable Miniplayer
 %hook YTWatchMiniBarViewController
-- (void)updateMiniBarPlayerStateFromRenderer { if (!ytlBool(@"miniplayer")) %orig; }
+- (void)updateMiniBarPlayerStateFromRenderer { if (!ytlBool(@"miniplayer")) %orig;
+}
 %end
 
 // Portrait Fullscreen
 %hook YTWatchViewController
-- (unsigned long long)allowedFullScreenOrientations { return ytlBool(@"portraitFullscreen") ? UIInterfaceOrientationMaskAllButUpsideDown : %orig; }
+- (unsigned long long)allowedFullScreenOrientations { return ytlBool(@"portraitFullscreen") ? UIInterfaceOrientationMaskAllButUpsideDown : %orig;
+}
 %end
 
 // Disable Autoplay
 %hook YTPlaybackConfig
-- (void)setStartPlayback:(BOOL)arg1 { ytlBool(@"disableAutoplay") ? %orig(NO) : %orig; }
+- (void)setStartPlayback:(BOOL)arg1 {
+    %orig(ytlBool(@"disableAutoplay") ? NO : arg1);
+}
 %end
 
 // Skip Content Warning (https://github.com/qnblackcat/uYouPlus/blob/main/uYouPlus.xm#L452-L454)
 %hook YTPlayabilityResolutionUserActionUIController
-- (void)showConfirmAlert { ytlBool(@"noContentWarning") ? [self confirmAlertDidPressConfirm] : %orig; }
+- (void)showConfirmAlert { ytlBool(@"noContentWarning") ? [self confirmAlertDidPressConfirm] : %orig;
+}
 %end
 
 // Classic Video Quality (https://github.com/PoomSmart/YTClassicVideoQuality)
@@ -364,27 +416,38 @@ static UIImage *YTImageNamed(NSString *imageName) {
 
 // Disable Snap To Chapter (https://github.com/qnblackcat/uYouPlus/blob/main/uYouPlus.xm#L457-464)
 %hook YTSegmentableInlinePlayerBarView
-- (void)didMoveToWindow { %orig; if (ytlBool(@"dontSnapToChapter")) self.enableSnapToChapter = NO; }
+- (void)didMoveToWindow { %orig; if (ytlBool(@"dontSnapToChapter")) self.enableSnapToChapter = NO;
+}
 %end
 
 // Red Progress Bar and Gray Buffer Progress
 %hook YTInlinePlayerBarContainerView
-- (id)quietProgressBarColor { return ytlBool(@"redProgressBar") ? [UIColor redColor] : %orig; }
+- (id)quietProgressBarColor { return ytlBool(@"redProgressBar") ? [UIColor redColor] : %orig;
+}
 %end
 
 %hook YTSegmentableInlinePlayerBarView
-- (void)setBufferedProgressBarColor:(id)arg1 { if (ytlBool(@"redProgressBar")) %orig([UIColor colorWithRed:0.65 green:0.65 blue:0.65 alpha:0.60]); }
+- (void)setBufferedProgressBarColor:(id)arg1 {
+    if (ytlBool(@"redProgressBar")) {
+        id c = [UIColor colorWithRed:0.65 green:0.65 blue:0.65 alpha:0.60];
+        %orig(c);
+    }
+}
 %end
 
 // Disable Hints
 %hook YTSettings
 - (BOOL)areHintsDisabled { return ytlBool(@"noHints") ? YES : NO; }
-- (void)setHintsDisabled:(BOOL)arg1 { ytlBool(@"noHints") ? %orig(YES) : %orig; }
+- (void)setHintsDisabled:(BOOL)arg1 {
+    %orig(ytlBool(@"noHints") ? YES : arg1);
+}
 %end
 
 %hook YTUserDefaults
 - (BOOL)areHintsDisabled { return ytlBool(@"noHints") ? YES : NO; }
-- (void)setHintsDisabled:(BOOL)arg1 { ytlBool(@"noHints") ? %orig(YES) : %orig; }
+- (void)setHintsDisabled:(BOOL)arg1 {
+    %orig(ytlBool(@"noHints") ? YES : arg1);
+}
 %end
 
 void addEndTime(YTPlayerViewController *self, YTSingleVideoController *video, YTSingleVideoTime *time) {
@@ -569,10 +632,12 @@ void autoSkipShorts(YTPlayerViewController *self, YTSingleVideoController *video
 
 %hook YTMainAppVideoPlayerOverlayViewController
 // Disable Double Tap To Seek
-- (BOOL)allowDoubleTapToSeekGestureRecognizer { return ytlBool(@"noDoubleTapToSeek") ? NO : %orig; }
+- (BOOL)allowDoubleTapToSeekGestureRecognizer { return ytlBool(@"noDoubleTapToSeek") ? NO : %orig;
+}
 
 // Disable Two Finger Double Tap
-- (BOOL)allowTwoFingerDoubleTapGestureRecognizer { return ytlBool(@"noTwoFingerSnapToChapter") ? NO : %orig; }
+- (BOOL)allowTwoFingerDoubleTapGestureRecognizer { return ytlBool(@"noTwoFingerSnapToChapter") ? NO : %orig;
+}
 
 // Copy Timestamped Link by Pressing On Pause
 - (void)didPressPause:(id)arg1 {
@@ -757,26 +822,40 @@ static BOOL findCell(ASNodeController *nodeController, NSArray <NSString *> *ide
 
 // Dont Startup Shorts
 %hook YTShortsStartupCoordinator
-- (id)evaluateResumeToShorts { return ytlBool(@"resumeShorts") ? nil : %orig; }
+- (id)evaluateResumeToShorts { return ytlBool(@"resumeShorts") ? nil : %orig;
+}
 %end
 
 // Hide Shorts Elements
 %hook YTReelPausedStateCarouselView
-- (void)setPausedStateCarouselVisible:(BOOL)arg1 animated:(BOOL)arg2 { ytlBool(@"hideShortsSubscriptions") ? %orig(arg1 = NO, arg2) : %orig; }
+- (void)setPausedStateCarouselVisible:(BOOL)arg1 animated:(BOOL)arg2 {
+    if (ytlBool(@"hideShortsSubscriptions")) arg1 = NO;
+    %orig(arg1, arg2);
+}
 %end
 
 %hook YTReelWatchPlaybackOverlayView
-- (void)setReelLikeButton:(id)arg1 { if (!ytlBool(@"hideShortsLike")) %orig; }
-- (void)setReelDislikeButton:(id)arg1 { if (!ytlBool(@"hideShortsDislike")) %orig; }
-- (void)setViewCommentButton:(id)arg1 { if (!ytlBool(@"hideShortsComments")) %orig; }
-- (void)setRemixButton:(id)arg1 { if (!ytlBool(@"hideShortsRemix")) %orig; }
-- (void)setShareButton:(id)arg1 { if (!ytlBool(@"hideShortsShare")) %orig; }
-- (void)setNativePivotButton:(id)arg1 { if (!ytlBool(@"hideShortsAvatars")) %orig; }
-- (void)setPivotButtonElementRenderer:(id)arg1 { if (!ytlBool(@"hideShortsAvatars")) %orig; }
+- (void)setReelLikeButton:(id)arg1 { if (!ytlBool(@"hideShortsLike")) %orig;
+}
+- (void)setReelDislikeButton:(id)arg1 { if (!ytlBool(@"hideShortsDislike")) %orig;
+}
+- (void)setViewCommentButton:(id)arg1 { if (!ytlBool(@"hideShortsComments")) %orig;
+}
+- (void)setRemixButton:(id)arg1 { if (!ytlBool(@"hideShortsRemix")) %orig;
+}
+- (void)setShareButton:(id)arg1 { if (!ytlBool(@"hideShortsShare")) %orig;
+}
+- (void)setNativePivotButton:(id)arg1 { if (!ytlBool(@"hideShortsAvatars")) %orig;
+}
+- (void)setPivotButtonElementRenderer:(id)arg1 { if (!ytlBool(@"hideShortsAvatars")) %orig;
+}
 %end
 
 %hook YTReelHeaderView
-- (void)setTitleLabelVisible:(BOOL)arg1 animated:(BOOL)arg2 { ytlBool(@"hideShortsLogo") ? %orig(arg1 = NO, arg2) : %orig; }
+- (void)setTitleLabelVisible:(BOOL)arg1 animated:(BOOL)arg2 {
+    if (ytlBool(@"hideShortsLogo")) arg1 = NO;
+    %orig(arg1, arg2);
+}
 %end
 
 %hook YTReelTransparentStackView
@@ -794,13 +873,20 @@ static BOOL findCell(ASNodeController *nodeController, NSArray <NSString *> *ide
 %end
 
 %hook YTReelWatchHeaderView
-- (void)setChannelBarElementRenderer:(id)renderer { if (!ytlBool(@"hideShortsChannelName")) %orig; }
-- (void)setHeaderRenderer:(id)renderer { if (!ytlBool(@"hideShortsDescription")) %orig; }
-- (void)setShortsVideoTitleElementRenderer:(id)renderer { if (!ytlBool(@"hideShortsDescription")) %orig; }
-- (void)setSoundMetadataElementRenderer:(id)renderer { if (!ytlBool(@"hideShortsAudioTrack")) %orig; }
-- (void)setActionElement:(id)renderer { if (!ytlBool(@"hideShortsPromoCards")) %orig; }
-- (void)setBadgeRenderer:(id)renderer { if (!ytlBool(@"hideShortsThanks")) %orig; }
-- (void)setMultiFormatLinkElementRenderer:(id)renderer { if (!ytlBool(@"hideShortsSource")) %orig; }
+- (void)setChannelBarElementRenderer:(id)renderer { if (!ytlBool(@"hideShortsChannelName")) %orig;
+}
+- (void)setHeaderRenderer:(id)renderer { if (!ytlBool(@"hideShortsDescription")) %orig;
+}
+- (void)setShortsVideoTitleElementRenderer:(id)renderer { if (!ytlBool(@"hideShortsDescription")) %orig;
+}
+- (void)setSoundMetadataElementRenderer:(id)renderer { if (!ytlBool(@"hideShortsAudioTrack")) %orig;
+}
+- (void)setActionElement:(id)renderer { if (!ytlBool(@"hideShortsPromoCards")) %orig;
+}
+- (void)setBadgeRenderer:(id)renderer { if (!ytlBool(@"hideShortsThanks")) %orig;
+}
+- (void)setMultiFormatLinkElementRenderer:(id)renderer { if (!ytlBool(@"hideShortsSource")) %orig;
+}
 %end
 
 static BOOL isOverlayShown = YES;
@@ -1184,8 +1270,14 @@ static void genImageFromLayer(CALayer *layer, UIColor *backgroundColor, void (^c
 
 // Hide Tab Bar Indicators
 %hook YTPivotBarIndicatorView
-- (void)setFillColor:(id)arg1 { %orig(ytlBool(@"removeIndicators") ? [UIColor clearColor] : arg1); }
-- (void)setBorderColor:(id)arg1 { %orig(ytlBool(@"removeIndicators") ? [UIColor clearColor] : arg1); }
+- (void)setFillColor:(id)arg1 {
+    id c = ytlBool(@"removeIndicators") ? [UIColor clearColor] : arg1;
+    %orig(c);
+}
+- (void)setBorderColor:(id)arg1 {
+    id c = ytlBool(@"removeIndicators") ? [UIColor clearColor] : arg1;
+    %orig(c);
+}
 %end
 
 // Hide Tab Labels
@@ -1354,8 +1446,10 @@ static void manageSpeedmasterYTLite(UILongPressGestureRecognizer *gesture, YTMai
 
 // Disable Right-To-Left Formatting
 %hook NSParagraphStyle
-+ (NSWritingDirection)defaultWritingDirectionForLanguage:(id)lang { return ytlBool(@"disableRTL") ? NSWritingDirectionLeftToRight : %orig; }
-+ (NSWritingDirection)_defaultWritingDirection { return ytlBool(@"disableRTL") ? NSWritingDirectionLeftToRight : %orig; }
++ (NSWritingDirection)defaultWritingDirectionForLanguage:(id)lang { return ytlBool(@"disableRTL") ? NSWritingDirectionLeftToRight : %orig;
+}
++ (NSWritingDirection)_defaultWritingDirection { return ytlBool(@"disableRTL") ? NSWritingDirectionLeftToRight : %orig;
+}
 %end
 
 // Fix Albums For Russian Users
@@ -1376,7 +1470,11 @@ static NSURL *newCoverURL(NSURL *originalURL) {
 
 %hook YTImageSelectionStrategyImageURLs
 - (id)initWithSelectedImageURL:(NSURL *)selectedImageURL updatedImageURL:(NSURL *)updatedImageURL {
-    return %orig(newCoverURL(selectedImageURL), newCoverURL(updatedImageURL));
+    {
+        id u1 = newCoverURL(selectedImageURL);
+        id u2 = newCoverURL(updatedImageURL);
+        return %orig(u1, u2);
+    }
 }
 %end
 
