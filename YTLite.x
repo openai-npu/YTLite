@@ -372,22 +372,39 @@ static UIImage *YTImageNamed(NSString *imageName) {
 %end
 
 // Extra Speed Options
-%hook YTVarispeedSwitchController
-- (void)setDelegate:(id)arg1 {
-    NSMutableArray *optionsCopy = [[self valueForKey:@"_options"] mutableCopy];
-    NSMutableArray<NSString *> *speedOptions = [NSMutableArray array];
-    for (float r = 0.5f; r <= 4.0f; r += 0.1f) {
-        [speedOptions addObject:[NSString stringWithFormat:@"%.1f", r]];
-    }
-
-    for (NSString *title in speedOptions) {
-        float rate = [title floatValue];
+static void ytlAppendExtraSpeedOptions(id controller) {
+    if (!ytlBool(@"extraSpeedOptions")) return;
+    NSMutableArray *optionsCopy = [[controller valueForKey:@"_options"] mutableCopy] ?: [NSMutableArray array];
+    for (int i = 21; i <= 40; i++) {
+        float rate = i / 10.0f;
+        NSString *title = [NSString stringWithFormat:@"%.1f", rate];
         YTVarispeedSwitchControllerOption *option = [[%c(YTVarispeedSwitchControllerOption) alloc] initWithTitle:title rate:rate];
         [optionsCopy addObject:option];
     }
+    [controller setValue:[optionsCopy copy] forKey:@"_options"];
+}
 
-    if (ytlBool(@"extraSpeedOptions")) [self setValue:[optionsCopy copy] forKey:@"_options"];
+%hook YTVarispeedSwitchController
+- (id)init {
+    id result = %orig;
+    ytlAppendExtraSpeedOptions(result);
+    return result;
+}
+- (void)setDelegate:(id)arg1 {
+    ytlAppendExtraSpeedOptions(self);
+    return %orig;
+}
+%end
 
+// YouTube >= 19.x uses the Impl variant on the new code path
+%hook YTVarispeedSwitchControllerImpl
+- (id)init {
+    id result = %orig;
+    ytlAppendExtraSpeedOptions(result);
+    return result;
+}
+- (void)setDelegate:(id)arg1 {
+    ytlAppendExtraSpeedOptions(self);
     return %orig;
 }
 %end
