@@ -980,3 +980,8 @@
 /* Live playback */
 "Player.Live" = "실시간";
 "Auto" = "자동";
+
+"AutoSpeedSkipLive" = "라이브 영상 기본 배속 제외";
+"AutoSpeedSkipLiveDesc" = "라이브·프리미어 영상에는 기본 재생 속도를 적용하지 않습니다.";
+"AutoSpeedSkipMusic" = "음악 영상 기본 배속 제외";
+"AutoSpeedSkipMusicDesc" = "음악 카테고리 영상에는 기본 재생 속도를 적용하지 않습니다.";

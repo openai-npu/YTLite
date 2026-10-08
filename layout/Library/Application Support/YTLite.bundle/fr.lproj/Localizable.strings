@@ -980,3 +980,8 @@
 /* Live playback */
 "Player.Live" = "En direct";
 "Auto" = "Auto";
+
+"AutoSpeedSkipLive" = "Keep normal speed on live";
+"AutoSpeedSkipLiveDesc" = "Live streams and premieres ignore the default playback rate.";
+"AutoSpeedSkipMusic" = "Keep normal speed on music";
+"AutoSpeedSkipMusicDesc" = "Music-category videos ignore the default playback rate.";

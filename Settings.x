@@ -211,6 +211,8 @@ static NSString *GetCacheSize() {
                 [self switchWithTitle:@"NoContentWarning" key:@"noContentWarning"],
                 [self switchWithTitle:@"ClassicQuality" key:@"classicQuality"],
                 [self switchWithTitle:@"ExtraSpeedOptions" key:@"extraSpeedOptions"],
+                [self switchWithTitle:@"AutoSpeedSkipLive" key:@"autoSpeedSkipLive"],
+                [self switchWithTitle:@"AutoSpeedSkipMusic" key:@"autoSpeedSkipMusic"],
                 [self switchWithTitle:@"DontSnap2Chapter" key:@"dontSnapToChapter"],
                 [self switchWithTitle:@"NoTwoFingerSnapToChapter" key:@"noTwoFingerSnapToChapter"],
                 [self switchWithTitle:@"PauseOnOverlay" key:@"pauseOnOverlay"],
