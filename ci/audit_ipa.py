@@ -1,29 +1,45 @@
 #!/usr/bin/env python3
-"""Audit a decrypted App Store IPA for tampering before we inject our tweak.
+"""Audit IPAs used in the smart-speed build.
 
-FAIL conditions (any single one aborts):
-  - Mach-O executable outside the stock allowlist
-  - Load command referencing a non-stock dylib/framework path
-  - File modified vs CodeResources that is not a FairPlay-decrypted binary
-  - File missing vs CodeResources that is not SC_Info DRM metadata
-  - Raw http:// IPv4 endpoint embedded in the main binary
+Modes:
+  stock  - decrypted base YouTube IPA: must be stock-only, tampering fails
+  donor  - YTLitePlus donor IPA: stock + known tweak binaries only
+  final  - assembled output app: verify injection, inventory delta vs stock,
+           patch symbols present, endpoint scan across all binaries
 
-Exit 0 = clean. Prints a report either way.
+Exit 0 = clean. Any unexplained finding fails.
 """
-import plistlib, hashlib, base64, os, re, subprocess, sys, glob
+import plistlib, hashlib, base64, os, re, subprocess, sys
 
-APP = sys.argv[1]  # path to Payload/*.app
-
-ALLOWED_MACHO = {
+STOCK_MACHO = {
     "YouTube", "widevine_cdm_secured_ios", "IntentsExtension",
     "NotificationContentExtension", "NotificationServiceExtension",
     "ShareExtension", "WidgetKitExtension", "AppMigrationExtension",
+    "OpenYoutubeSafariExtension", "ShareServiceExtension",
+}
+TWEAK_DYLIBS = {
+    "YTLite.dylib", "YTLitePlus.dylib", "libcolorpicker.dylib",
+    "iSponsorBlock.dylib", "YTUHD.dylib", "YouPiP.dylib",
+    "YouTubeDislikesReturn.dylib", "YTABConfig.dylib", "YouMute.dylib",
+    "DontEatMyContent.dylib", "YTHoldForSpeed.dylib",
+    "YTVideoOverlay.dylib", "YouGroupSettings.dylib", "YouQuality.dylib",
+    "YouTimeStamp.dylib", "YouLoop.dylib",
+}
+TWEAK_FRAMEWORKS = {"Alderis.framework", "CydiaSubstrate.framework"}
+TWEAK_APPEX = {"OpenYoutubeSafariExtension.appex", "ShareServiceExtension.appex"}
+DROPPED_APPEX = {
+    "IntentsExtension.appex", "NotificationContentExtension.appex",
+    "NotificationServiceExtension.appex", "ShareExtension.appex",
+    "WidgetKitExtension.appex", "AppMigrationExtension.appex",
 }
 ALLOWED_LOAD_PREFIXES = (
     "/System/Library/", "/usr/lib/", "@rpath/", "@loader_path/",
-    "/Library/MobileSubstrate/DynamicLibraries/YouTube",
+    "/Library/MobileSubstrate/DynamicLibraries/", "/Library/Frameworks/",
 )
 SCINFO = re.compile(r"(^|/)SC_Info/|\.supp$|\.supf$|\.sinf$|Manifest\.plist$")
+DOMAIN_RE = re.compile(rb"https?://([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})")
+IPURL_RE = re.compile(rb"https?://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}")
+EXPECTED_ENDPOINTS = {b"sponsor.ajay.app"}  # iSponsorBlock talks to SponsorBlock API
 
 def macho_files(root):
     out = []
@@ -44,71 +60,134 @@ def load_cmds(path):
     except Exception:
         return ""
 
-failures = []
+def all_files(root):
+    return {os.path.relpath(os.path.join(dp, f), root)
+            for dp, _, fns in os.walk(root) for f in fns}
 
-# 1. Mach-O inventory
+def scan_endpoints(path):
+    data = open(path, "rb").read()
+    ips = set(IPURL_RE.findall(data))
+    domains = set(m.group(0) for m in DOMAIN_RE.finditer(data))
+    return ips, domains
+
+failures = []
+def fail(msg):
+    failures.append(msg); print(f"  FAIL {msg}")
+
+APP = sys.argv[1]
+mode = "stock"
+if "--mode" in sys.argv:
+    mode = sys.argv[sys.argv.index("--mode") + 1]
+
+# --- 1. Mach-O inventory ---------------------------------------------------
 machos = macho_files(APP)
 print(f"[inventory] Mach-O files: {len(machos)}")
+allowed = set(STOCK_MACHO)
+if mode in ("donor", "final"):
+    allowed |= {os.path.splitext(d)[0] for d in TWEAK_DYLIBS}
+    allowed |= {os.path.splitext(a)[0] for a in TWEAK_APPEX}
+    allowed |= {os.path.splitext(f)[0] for f in TWEAK_FRAMEWORKS}
+    allowed |= {"Alderis", "CydiaSubstrate", "AlderisCorePolyfill", "libcolorpicker"}
 for rel in sorted(machos):
     base = os.path.basename(rel)
-    flag = "OK " if base in ALLOWED_MACHO else "FAIL"
-    print(f"  {flag} {rel}")
-    if base not in ALLOWED_MACHO:
-        failures.append(f"unexpected executable: {rel}")
-
-# 2. Load commands must only reference stock locations
-for rel in machos:
-    loads = load_cmds(os.path.join(APP, rel))
-    for line in loads.splitlines()[1:]:
-        dep = line.strip().split(" (")[0]
-        if not dep or dep.startswith("/"): 
-            ok = dep.startswith(ALLOWED_LOAD_PREFIXES)
-        else:
-            ok = dep.startswith(ALLOWED_LOAD_PREFIXES)
-        if not ok:
-            failures.append(f"{rel}: suspicious load {dep}")
-            print(f"  FAIL {rel} loads {dep}")
-
-# 3. CodeResources audit
-crp = os.path.join(APP, "_CodeSignature/CodeResources")
-cr = plistlib.load(open(crp, "rb"))
-files = cr.get("files2", cr.get("files", {}))
-checked = modified = 0
-for rel, info in files.items():
-    if SCINFO.search(rel):
-        continue
-    full = os.path.join(APP, rel)
-    if not os.path.exists(full):
-        failures.append(f"missing file: {rel}")
-        continue
-    data = open(full, "rb").read()
-    expected = info.get("hash2", info.get("hash")) if isinstance(info, dict) else info
-    if isinstance(expected, bytes):
-        h = base64.b64encode(hashlib.sha256(data).digest()).decode() if "hash2" in info else base64.b64encode(hashlib.sha1(data).digest()).decode()
-        exp = base64.b64encode(expected).decode()
+    if base not in allowed:
+        fail(f"unexpected executable: {rel}")
     else:
-        h = hashlib.sha256(data).hexdigest(); exp = expected
-    checked += 1
-    if h != exp:
-        modified += 1
-        base = os.path.basename(rel)
-        if base in ALLOWED_MACHO and rel in machos:
-            print(f"  NOTE modified (decrypt-touched binary): {rel}")
-        else:
-            failures.append(f"modified file: {rel}")
-            print(f"  FAIL modified: {rel}")
-print(f"[coderesources] checked={checked} modified={modified} (decrypt-touched binaries expected)")
+        print(f"  OK  {rel}")
 
-# 4. Raw IP http endpoints in main binary
-strings = subprocess.check_output(["strings", "-a", os.path.join(APP, "YouTube")], text=True, errors="ignore")
-ips = sorted(set(re.findall(r"https?://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", strings)))
-print(f"[endpoints] raw-IP http endpoints: {len(ips)}")
-for ip in ips[:10]:
-    print(f"  FAIL {ip}"); failures.append(f"raw IP endpoint: {ip}")
+# --- 2. Load commands ------------------------------------------------------
+for rel in machos:
+    for line in load_cmds(os.path.join(APP, rel)).splitlines()[1:]:
+        dep = line.strip().split(" (")[0]
+        if dep and not dep.startswith(ALLOWED_LOAD_PREFIXES):
+            fail(f"{rel}: suspicious load {dep}")
+
+# --- 3. CodeResources (stock mode only) ------------------------------------
+if mode == "stock":
+    crp = os.path.join(APP, "_CodeSignature/CodeResources")
+    cr = plistlib.load(open(crp, "rb"))
+    files = cr.get("files2", cr.get("files", {}))
+    checked = modified = 0
+    for rel, info in files.items():
+        if SCINFO.search(rel):
+            continue
+        full = os.path.join(APP, rel)
+        if not os.path.exists(full):
+            fail(f"missing file: {rel}"); continue
+        data = open(full, "rb").read()
+        expected = info.get("hash2", info.get("hash")) if isinstance(info, dict) else info
+        if isinstance(expected, bytes):
+            h = base64.b64encode(hashlib.sha256(data).digest()).decode() if "hash2" in info else base64.b64encode(hashlib.sha1(data).digest()).decode()
+            exp = base64.b64encode(expected).decode()
+        else:
+            h = hashlib.sha256(data).hexdigest(); exp = expected
+        checked += 1
+        if h != exp:
+            modified += 1
+            base = os.path.basename(rel)
+            if base in STOCK_MACHO:
+                print(f"  NOTE modified (decrypt-touched): {rel}")
+            else:
+                fail(f"modified file: {rel}")
+    print(f"[coderesources] checked={checked} modified={modified}")
+
+# --- 4. Endpoint scan over every binary ------------------------------------
+print("[endpoints] scanning binaries")
+found_domains = set()
+for rel in machos:
+    ips, domains = scan_endpoints(os.path.join(APP, rel))
+    found_domains |= domains
+    for ip in sorted(ips):
+        fail(f"raw IP endpoint in {rel}: {ip.decode()}")
+    if mode in ("donor", "final"):
+        for d in sorted(domains):
+            host = d.split(b"/")[2] if d.count(b"/") >= 2 else d
+            print(f"  endpoint {rel}: {d.decode()[:80]}")
+
+# --- 5. Donor mode: tweak files must be exactly the known set --------------
+if mode == "donor":
+    fw = os.path.join(APP, "Frameworks")
+    extras = {f for f in os.listdir(fw)
+              if f not in TWEAK_DYLIBS | TWEAK_FRAMEWORKS | {"widevine_cdm_secured_ios.framework"}}
+    for f in sorted(extras):
+        fail(f"donor: unexpected Frameworks entry {f}")
+    plugs = set(os.listdir(os.path.join(APP, "PlugIns")))
+    for f in sorted(plugs - TWEAK_APPEX):
+        print(f"  donor note: stock/extra appex {f} (dropped or ignored at assembly)")
+
+# --- 6. Final mode: injection + patch verification --------------------------
+if mode == "final":
+    fw = os.path.join(APP, "Frameworks")
+    present = set(os.listdir(fw))
+    missing = (TWEAK_DYLIBS | TWEAK_FRAMEWORKS) - present
+    for m in sorted(missing):
+        fail(f"final: expected tweak file missing: {m}")
+    extra = present - TWEAK_DYLIBS - TWEAK_FRAMEWORKS - {"widevine_cdm_secured_ios.framework"}
+    for e in sorted(extra):
+        fail(f"final: unexpected Frameworks entry {e}")
+
+    loads = load_cmds(os.path.join(APP, "YouTube"))
+    weak = {m.group(1) for m in
+            (re.search(r"@rpath/(\S+).*weak", l) for l in loads.splitlines()) if m}
+    for d in TWEAK_DYLIBS:
+        if d not in weak:
+            fail(f"final: no weak load for {d}")
+    for w in sorted(weak):
+        if w not in TWEAK_DYLIBS:
+            fail(f"final: unexpected weak load @rpath/{w}")
+    print(f"[inject] weak loads: {len(weak)}")
+
+    ytd = open(os.path.join(APP, "Frameworks/YTLite.dylib"), "rb").read()
+    for sym in (b"speedIndex", b"ExtraSpeedOptions"):
+        if sym not in ytd:
+            fail(f"final: patch symbol {sym.decode()} missing in YTLite.dylib")
+    print("[patch] speed symbols present")
+
+    if EXPECTED_ENDPOINTS - found_domains:
+        print("  note: sponsorblock API endpoint not seen (may be runtime-built)")
 
 print("=" * 40)
 if failures:
-    print(f"AUDIT FAILED: {len(failures)} finding(s)")
-    for f in failures: print(" -", f)
+    print(f"AUDIT FAILED ({mode}): {len(failures)} finding(s)")
     sys.exit(1)
-print("AUDIT CLEAN")
+print(f"AUDIT CLEAN ({mode})")

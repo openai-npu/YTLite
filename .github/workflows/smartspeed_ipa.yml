@@ -13,7 +13,7 @@ env:
 
 jobs:
   tweak:
-    name: Build patched YTLite.dylib
+    name: Build tweaks from source
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,7 +42,7 @@ jobs:
           git -C "$GITHUB_WORKSPACE/../protobuf" fetch -q --depth=1 origin tag v3.21.12
           git -C "$GITHUB_WORKSPACE/../protobuf" checkout -q v3.21.12
 
-      - name: Build tweak deb
+      - name: Build YTLite deb (patched branch)
         run: |
           export THEOS=$HOME/theos
           LLVM=$(brew --prefix llvm)
@@ -52,11 +52,33 @@ jobs:
             TARGET_LIPO=lipo TARGET_CODESIGN=ldid TARGET_CODESIGN_FLAGS=-S
           ls -la packages/
 
-      - name: Upload deb
+      - name: Build iSponsorBlock from source
+        run: |
+          export THEOS=$HOME/theos
+          LLVM=$(brew --prefix llvm)
+          git clone -q --depth=1 https://github.com/Galactic-Dev/iSponsorBlock /tmp/isb
+          cd /tmp/isb
+          make package \
+            TARGET_CC=$LLVM/bin/clang TARGET_CXX=$LLVM/bin/clang++ \
+            TARGET_LD=$LLVM/bin/clang++ TARGET_STRIP=$LLVM/bin/llvm-strip \
+            TARGET_LIPO=lipo TARGET_CODESIGN=ldid TARGET_CODESIGN_FLAGS=-S
+          mkdir -p bx && cd bx && ar -x ../packages/*.deb && tar -xf data.tar.*
+          ls -la Library/MobileSubstrate/DynamicLibraries/
+
+      - name: Stage built outputs
+        run: |
+          mkdir -p out bx
+          cd bx && ar -x ../packages/*.deb && tar -xf data.tar.* && cd ..
+          cp "bx/Library/MobileSubstrate/DynamicLibraries/YTLite.dylib" out/
+          cp -R "bx/Library/Application Support/YTLite.bundle" out/
+          cp "/tmp/isb/bx/Library/MobileSubstrate/DynamicLibraries/iSponsorBlock.dylib" out/
+          ls -la out/
+
+      - name: Upload built outputs
         uses: actions/upload-artifact@v4
         with:
-          name: ytlite-deb
-          path: packages/*.deb
+          name: tweak-out
+          path: out/
 
   package:
     name: Audit + inject + package IPA
@@ -67,7 +89,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
-        with: {name: ytlite-deb, path: debs/}
+        with: {name: tweak-out, path: build/}
 
       - name: Download base + donor IPAs
         run: |
@@ -75,22 +97,26 @@ jobs:
           curl -sfL "$OLD_IPA_URL" -o old.ipa
           ls -lh *.ipa
 
-      - name: Audit decrypted base IPA
+      - name: Audit decrypted base IPA (stock)
         run: |
           mkdir -p audit && unzip -q base.ipa -d audit
-          python3 ci/audit_ipa.py audit/Payload/*.app
+          python3 ci/audit_ipa.py audit/Payload/*.app --mode stock
+
+      - name: Audit donor IPA (old.ipa)
+        run: |
+          mkdir -p old_x && unzip -q old.ipa -d old_x
+          python3 ci/audit_ipa.py old_x/Payload/YouTube.app --mode donor
 
       - name: Assemble patched Payload
         run: |
           set -e
           APP=$(echo audit/Payload/*.app)
-          mkdir -p old_x && unzip -q old.ipa -d old_x
           OLDAPP="old_x/Payload/YouTube.app"
           mkdir -p "$APP/Frameworks"
           cp -R "$OLDAPP/Frameworks/" "$APP/Frameworks/"
-          mkdir -p deb_x && ar -x debs/*.deb && tar -xf data.tar.* -C deb_x
-          cp "deb_x/Library/MobileSubstrate/DynamicLibraries/YTLite.dylib" "$APP/Frameworks/YTLite.dylib"
-          cp -R "deb_x/Library/Application Support/YTLite.bundle" "$APP/YTLite.bundle"
+          cp "build/YTLite.dylib" "$APP/Frameworks/YTLite.dylib"
+          cp "build/iSponsorBlock.dylib" "$APP/Frameworks/iSponsorBlock.dylib"
+          cp -R "build/YTLite.bundle" "$APP/YTLite.bundle"
           for appex in OpenYoutubeSafariExtension ShareServiceExtension; do
             [ -d "$OLDAPP/PlugIns/$appex.appex" ] && cp -R "$OLDAPP/PlugIns/$appex.appex" "$APP/PlugIns/" || true
           done
@@ -107,7 +133,9 @@ jobs:
             /tmp/insert_dylib_bin --weak --inplace --all-yes "@rpath/$name" "$APP/YouTube" >/dev/null
             echo "injected $name"
           done
-          otool -L "$APP/YouTube" | grep "@rpath.*weak" | wc -l
+
+      - name: Audit assembled app (final)
+        run: python3 ci/audit_ipa.py audit/Payload/*.app --mode final
 
       - name: Package IPA
         run: |
@@ -121,4 +149,4 @@ jobs:
           gh release create "smartspeed-${{ github.run_id }}" out.ipa \
             --repo ${{ github.repository }} \
             --title "YTLite smart-speed build (21.21.03 base)" \
-            --notes "Patched YTLite.dylib on decrypted YouTube 21.21.03. Audit report in run log."
+            --notes "Patched YTLite.dylib + iSponsorBlock from source on decrypted YouTube 21.21.03. Audit reports in run log."
