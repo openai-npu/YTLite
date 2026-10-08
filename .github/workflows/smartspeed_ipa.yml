@@ -57,6 +57,7 @@ jobs:
           export THEOS=$HOME/theos
           LLVM=$(brew --prefix llvm)
           git clone -q --depth=1 https://github.com/Galactic-Dev/iSponsorBlock /tmp/isb
+          git clone -q --depth=1 https://github.com/PoomSmart/YouGroupSettings /tmp/ygs
           cd /tmp/isb
           make package TARGET="iphone:clang:16.5:17.0" \
             TARGET_CC=$LLVM/bin/clang TARGET_CXX=$LLVM/bin/clang++ \
@@ -119,6 +120,7 @@ jobs:
           cp "build/iSponsorBlock.dylib" "$APP/Frameworks/iSponsorBlock.dylib"
           cp -R "build/YTLite.bundle" "$APP/YTLite.bundle"
           cp -R "build/iSponsorBlock.bundle" "$APP/iSponsorBlock.bundle"
+          cp -R "/tmp/ygs/layout/Library/Application Support/YouGroupSettings.bundle" "$APP/YouGroupSettings.bundle"
           for b in DontEatMyContent RYD YTABC YTHoldForSpeed YTLitePlus YTUHD YTVideoOverlay YouLoop YouMute YouPiP YouQuality YouTimeStamp; do
             [ -d "$OLDAPP/$b.bundle" ] && cp -R "$OLDAPP/$b.bundle" "$APP/$b.bundle" || true
           done
