@@ -2,9 +2,8 @@ name: SmartSpeed IPA build
 
 on:
   push:
-    paths:
-      - ".github/workflows/smartspeed_ipa.yml"
-      - "ci/**"
+    branches:
+      - smart-speed
   workflow_dispatch:
 
 env:
