@@ -58,7 +58,7 @@ jobs:
           LLVM=$(brew --prefix llvm)
           git clone -q --depth=1 https://github.com/Galactic-Dev/iSponsorBlock /tmp/isb
           cd /tmp/isb
-          make package \
+          make package TARGET="iphone:clang:16.5:17.0" \
             TARGET_CC=$LLVM/bin/clang TARGET_CXX=$LLVM/bin/clang++ \
             TARGET_LD=$LLVM/bin/clang++ TARGET_STRIP=$LLVM/bin/llvm-strip \
             TARGET_LIPO=lipo TARGET_CODESIGN=ldid TARGET_CODESIGN_FLAGS=-S

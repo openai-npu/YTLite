@@ -491,6 +491,28 @@ void autoSkipShorts(YTPlayerViewController *self, YTSingleVideoController *video
     }
 }
 
+static BOOL autoSpeedBlocked(YTPlayerViewController *self) {
+    id details = self.playerResponse.playerData.videoDetails;
+    if (!details) return NO;
+
+    if (ytlBool(@"autoSpeedSkipLive")) {
+        for (NSString *key in @[@"isLive", @"isLiveContent", @"isUpcoming", @"isLivePlayback", @"isLowLatencyLiveStream"]) {
+            if ([details respondsToSelector:NSSelectorFromString(key)] && [[details valueForKey:key] boolValue]) return YES;
+        }
+    }
+
+    if (ytlBool(@"autoSpeedSkipMusic")) {
+        if ([details respondsToSelector:@selector(musicVideoType)] && [[details valueForKey:@"musicVideoType"] intValue] != 0) return YES;
+
+        id microformat = [self.playerResponse.playerData valueForKey:@"microformat"];
+        id pmfr = [microformat respondsToSelector:@selector(playerMicroformatRenderer)] ? [microformat valueForKey:@"playerMicroformatRenderer"] : nil;
+        id category = [pmfr respondsToSelector:@selector(category)] ? [pmfr valueForKey:@"category"] : nil;
+        if ([category isKindOfClass:[NSString class]] && [category isEqualToString:@"Music"]) return YES;
+    }
+
+    return NO;
+}
+
 %hook YTPlayerViewController
 - (void)loadWithPlayerTransition:(id)arg1 playbackConfig:(id)arg2 {
     %orig;
@@ -526,31 +548,8 @@ void autoSkipShorts(YTPlayerViewController *self, YTSingleVideoController *video
 }
 
 %new
-- (BOOL)ytlAutoSpeedBlocked {
-    id details = self.playerResponse.playerData.videoDetails;
-    if (!details) return NO;
-
-    if (ytlBool(@"autoSpeedSkipLive")) {
-        for (NSString *key in @[@"isLive", @"isLiveContent", @"isUpcoming", @"isLivePlayback", @"isLowLatencyLiveStream"]) {
-            if ([details respondsToSelector:NSSelectorFromString(key)] && [[details valueForKey:key] boolValue]) return YES;
-        }
-    }
-
-    if (ytlBool(@"autoSpeedSkipMusic")) {
-        if ([details respondsToSelector:@selector(musicVideoType)] && [[details valueForKey:@"musicVideoType"] intValue] != 0) return YES;
-
-        id microformat = [self.playerResponse.playerData valueForKey:@"microformat"];
-        id pmfr = [microformat respondsToSelector:@selector(playerMicroformatRenderer)] ? [microformat valueForKey:@"playerMicroformatRenderer"] : nil;
-        id category = [pmfr respondsToSelector:@selector(category)] ? [pmfr valueForKey:@"category"] : nil;
-        if ([category isKindOfClass:[NSString class]] && [category isEqualToString:@"Music"]) return YES;
-    }
-
-    return NO;
-}
-
-%new
 - (void)setAutoSpeed {
-    if ([self ytlAutoSpeedBlocked]) return;
+    if (autoSpeedBlocked(self)) return;
     if ([self.activeVideoPlayerOverlay isKindOfClass:NSClassFromString(@"YTMainAppVideoPlayerOverlayViewController")]
         && [self.view.superview isKindOfClass:NSClassFromString(@"YTWatchView")]) {
         YTMainAppVideoPlayerOverlayViewController *overlayVC = (YTMainAppVideoPlayerOverlayViewController *)self.activeVideoPlayerOverlay;
