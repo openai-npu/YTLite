@@ -74,6 +74,7 @@ jobs:
           cp -R "bx/Library/Application Support/YTLite.bundle" out/
           cp "/tmp/isb/bx/Library/MobileSubstrate/DynamicLibraries/iSponsorBlock.dylib" out/
           cp -R "/tmp/isb/bx/Library/Application Support/iSponsorBlock.bundle" out/
+          cp -R "/tmp/ygs/layout/Library/Application Support/YouGroupSettings.bundle" out/
           ls -la out/
 
       - name: Upload built outputs
@@ -120,7 +121,7 @@ jobs:
           cp "build/iSponsorBlock.dylib" "$APP/Frameworks/iSponsorBlock.dylib"
           cp -R "build/YTLite.bundle" "$APP/YTLite.bundle"
           cp -R "build/iSponsorBlock.bundle" "$APP/iSponsorBlock.bundle"
-          cp -R "/tmp/ygs/layout/Library/Application Support/YouGroupSettings.bundle" "$APP/YouGroupSettings.bundle"
+          cp -R "build/YouGroupSettings.bundle" "$APP/YouGroupSettings.bundle"
           for b in DontEatMyContent RYD YTABC YTHoldForSpeed YTLitePlus YTUHD YTVideoOverlay YouLoop YouMute YouPiP YouQuality YouTimeStamp; do
             [ -d "$OLDAPP/$b.bundle" ] && cp -R "$OLDAPP/$b.bundle" "$APP/$b.bundle" || true
           done
