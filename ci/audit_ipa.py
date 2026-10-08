@@ -189,6 +189,39 @@ if mode == "final":
                 if fwn in bundled_fw and not dep.startswith("@rpath/"):
                     fail(f"{rel}: bundled framework referenced via absolute path {dep}")
     print("[deps] bundled-lib references use @rpath")
+    for rel in machos:
+        for line in load_cmds(os.path.join(APP, rel)).splitlines()[1:]:
+            dep = line.strip().split(" (")[0]
+            if dep.startswith("@rpath/") and not os.path.exists(os.path.join(fw, dep[7:])):
+                if not dep.startswith("@rpath/YouTube"):  # self refs etc
+                    fail(f"{rel}: @rpath dep has no bundled file: {dep}")
+    print("[deps] all @rpath refs resolve to bundled files")
+
+    app_bundles = {f for f in os.listdir(APP) if f.endswith(".bundle")}
+    need = {}
+    for rel in machos:
+        p = os.path.join(APP, rel)
+        data = open(p, "rb").read()
+        for m in set(re.findall(rb"[A-Za-z0-9_-]{3,}\.bundle", data)):
+            need.setdefault(m.decode(), []).append(rel)
+    unmet = 0
+    for b, srcs in sorted(need.items()):
+        if b not in app_bundles:
+            tweak_srcs = [s for s in srcs if s.startswith("Frameworks/") and s.endswith(".dylib")]
+            if tweak_srcs:
+                fail(f"tweak dylib {tweak_srcs[0]} requires missing bundle {b}")
+            else:
+                print(f"  bundle-ref {b} needed by {srcs[0]} (not at app root)")
+            unmet += 1
+    print(f"[bundles] referenced={len(need)} at-root={len(app_bundles)} unmet={unmet}")
+
+    import subprocess as _sp
+    noarm = [r for r in machos
+             if "arm64" not in _sp.check_output(["lipo","-info",os.path.join(APP,r)],text=True,stderr=_sp.DEVNULL)]
+    for r in noarm:
+        fail(f"no arm64 slice: {r}")
+    print(f"[arch] all {len(machos)} binaries have arm64")
+
 
 
     ytd = open(os.path.join(APP, "Frameworks/YTLite.dylib"), "rb").read()
