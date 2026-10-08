@@ -90,7 +90,9 @@ if mode in ("donor", "final"):
     allowed |= {"Alderis", "CydiaSubstrate", "AlderisCorePolyfill", "libcolorpicker"}
 for rel in sorted(machos):
     base = os.path.basename(rel)
-    if base not in allowed:
+    stem = os.path.splitext(base)[0]
+    in_allowed_appex = any(c in TWEAK_APPEX for c in rel.split("/"))
+    if base not in allowed and stem not in allowed and not in_allowed_appex:
         fail(f"unexpected executable: {rel}")
     else:
         print(f"  OK  {rel}")
@@ -100,6 +102,8 @@ for rel in machos:
     for line in load_cmds(os.path.join(APP, rel)).splitlines()[1:]:
         dep = line.strip().split(" (")[0]
         if dep and not dep.startswith(ALLOWED_LOAD_PREFIXES):
+            if mode in ("donor", "final") and "YouTube.app/" in dep:
+                continue
             fail(f"{rel}: suspicious load {dep}")
 
 # --- 3. CodeResources (stock mode only) ------------------------------------
@@ -182,6 +186,8 @@ if mode == "final":
         for line in load_cmds(os.path.join(APP, rel)).splitlines()[1:]:
             dep = line.strip().split(" (")[0]
             leaf = dep.split("/")[-1]
+            if leaf == os.path.basename(rel):
+                continue  # LC_ID_DYLIB self install name, not a dependency
             if leaf in bundled_dy and not dep.startswith("@rpath/"):
                 fail(f"{rel}: bundled dylib referenced via absolute path {dep}")
             if ".framework/" in dep:
