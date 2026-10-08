@@ -117,6 +117,9 @@ jobs:
           cp "build/YTLite.dylib" "$APP/Frameworks/YTLite.dylib"
           cp "build/iSponsorBlock.dylib" "$APP/Frameworks/iSponsorBlock.dylib"
           cp -R "build/YTLite.bundle" "$APP/YTLite.bundle"
+          install_name_tool -change /usr/lib/libcolorpicker.dylib @rpath/libcolorpicker.dylib "$APP/Frameworks/iSponsorBlock.dylib"
+          install_name_tool -change /Library/Frameworks/CydiaSubstrate.framework/CydiaSubstrate @rpath/CydiaSubstrate.framework/CydiaSubstrate "$APP/Frameworks/iSponsorBlock.dylib"
+          install_name_tool -change /Library/Frameworks/CydiaSubstrate.framework/CydiaSubstrate @rpath/CydiaSubstrate.framework/CydiaSubstrate "$APP/Frameworks/YTLite.dylib"
           for appex in OpenYoutubeSafariExtension ShareServiceExtension; do
             [ -d "$OLDAPP/PlugIns/$appex.appex" ] && cp -R "$OLDAPP/PlugIns/$appex.appex" "$APP/PlugIns/" || true
           done

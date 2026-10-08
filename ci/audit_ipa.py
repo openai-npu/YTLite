@@ -176,6 +176,20 @@ if mode == "final":
         if w not in TWEAK_DYLIBS:
             fail(f"final: unexpected weak load @rpath/{w}")
     print(f"[inject] weak loads: {len(weak)}")
+    bundled_dy = {f for f in os.listdir(fw) if f.endswith(".dylib")}
+    bundled_fw = {f for f in os.listdir(fw) if f.endswith(".framework")}
+    for rel in machos:
+        for line in load_cmds(os.path.join(APP, rel)).splitlines()[1:]:
+            dep = line.strip().split(" (")[0]
+            leaf = dep.split("/")[-1]
+            if leaf in bundled_dy and not dep.startswith("@rpath/"):
+                fail(f"{rel}: bundled dylib referenced via absolute path {dep}")
+            if ".framework/" in dep:
+                fwn = dep.split("/")[-3] if dep.count("/") >= 3 else ""
+                if fwn in bundled_fw and not dep.startswith("@rpath/"):
+                    fail(f"{rel}: bundled framework referenced via absolute path {dep}")
+    print("[deps] bundled-lib references use @rpath")
+
 
     ytd = open(os.path.join(APP, "Frameworks/YTLite.dylib"), "rb").read()
     for sym in (b"speedIndex", b"ExtraSpeedOptions"):
