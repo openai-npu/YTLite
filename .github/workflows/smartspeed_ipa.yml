@@ -72,6 +72,7 @@ jobs:
           cp "bx/Library/MobileSubstrate/DynamicLibraries/YTLite.dylib" out/
           cp -R "bx/Library/Application Support/YTLite.bundle" out/
           cp "/tmp/isb/bx/Library/MobileSubstrate/DynamicLibraries/iSponsorBlock.dylib" out/
+          cp -R "/tmp/isb/bx/Library/Application Support/iSponsorBlock.bundle" out/
           ls -la out/
 
       - name: Upload built outputs
@@ -117,6 +118,10 @@ jobs:
           cp "build/YTLite.dylib" "$APP/Frameworks/YTLite.dylib"
           cp "build/iSponsorBlock.dylib" "$APP/Frameworks/iSponsorBlock.dylib"
           cp -R "build/YTLite.bundle" "$APP/YTLite.bundle"
+          cp -R "build/iSponsorBlock.bundle" "$APP/iSponsorBlock.bundle"
+          for b in DontEatMyContent RYD YTABC YTHoldForSpeed YTLitePlus YTUHD YTVideoOverlay YouLoop YouMute YouPiP YouQuality YouTimeStamp; do
+            [ -d "$OLDAPP/$b.bundle" ] && cp -R "$OLDAPP/$b.bundle" "$APP/$b.bundle" || true
+          done
           install_name_tool -change /usr/lib/libcolorpicker.dylib @rpath/libcolorpicker.dylib "$APP/Frameworks/iSponsorBlock.dylib"
           install_name_tool -change /Library/Frameworks/CydiaSubstrate.framework/CydiaSubstrate @rpath/CydiaSubstrate.framework/CydiaSubstrate "$APP/Frameworks/iSponsorBlock.dylib"
           install_name_tool -change /Library/Frameworks/CydiaSubstrate.framework/CydiaSubstrate @rpath/CydiaSubstrate.framework/CydiaSubstrate "$APP/Frameworks/YTLite.dylib"
