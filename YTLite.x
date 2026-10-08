@@ -398,7 +398,7 @@ static UIImage *YTImageNamed(NSString *imageName) {
     NSString *originalVersion = %orig;
     NSString *fakeVersion = @"18.18.2";
 
-    return (!ytlBool(@"classicQuality") && !ytlBool(@"extraSpeedOptions") && [originalVersion compare:fakeVersion options:NSNumericSearch] == NSOrderedDescending) ? originalVersion : fakeVersion;
+    return (!ytlBool(@"classicQuality") && [originalVersion compare:fakeVersion options:NSNumericSearch] == NSOrderedDescending) ? originalVersion : fakeVersion;
 }
 %end
 
